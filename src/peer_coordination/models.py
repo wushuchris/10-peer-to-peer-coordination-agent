@@ -176,6 +176,14 @@ class WorkRequestPayload(StrictModel):
     work_id: Identifier
     requested_capability: Capability
     summary: ShortText
+    input_work_product_ids: tuple[Identifier, ...] = ()
+
+    @field_validator("input_work_product_ids")
+    @classmethod
+    def input_work_product_ids_must_be_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("input_work_product_ids must not contain duplicates")
+        return value
 
 
 class WorkResultPayload(StrictModel):
