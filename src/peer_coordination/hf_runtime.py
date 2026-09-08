@@ -35,9 +35,9 @@ _TASK_SCHEMAS: dict[str, type[StrictModel]] = {
 # structured object can finish. These are provider-call limits only; application
 # schemas and deterministic validation remain authoritative.
 _TASK_MAX_TOKENS: dict[str, int] = {
-    "analysis": 1800,
-    "critique": 2400,
-    "synthesis": 2000,
+    "analysis": 3200,
+    "critique": 3200,
+    "synthesis": 2400,
 }
 
 _TASK_OUTPUT_HINTS: dict[str, str] = {
@@ -54,6 +54,12 @@ _TASK_OUTPUT_HINTS: dict[str, str] = {
         "verified evidence IDs supplied by the application."
     ),
 }
+
+# Qwen3.8 defaults to very deep reasoning even for small formatting tasks. The
+# Hugging Face Chat Completion API exposes reasoning_effort as a documented field,
+# so we request the model's lowest supported reasoning level without relying on
+# provider-specific extra_body/chat-template extensions.
+_LOW_REASONING_MODEL_PREFIXES = ("Qwen/Qwen3.8-",)
 
 
 def _safe_provider_error(exc: Exception, *, token: str) -> str:
@@ -85,6 +91,10 @@ def _schema_for_task(task_name: str) -> type[StrictModel]:
         raise StructuredModelError(
             f"no provider JSON schema registered for bounded task: {task_name}"
         ) from exc
+
+
+def _uses_low_reasoning(model_id: str) -> bool:
+    return model_id.startswith(_LOW_REASONING_MODEL_PREFIXES)
 
 
 @dataclass(frozen=True)
@@ -131,10 +141,12 @@ class HuggingFaceStructuredChatClient(HuggingFaceChatClient):
             "max_tokens": task_max_tokens,
             "response_format": response_format,
         }
+        if _uses_low_reasoning(self.model_id):
+            request["reasoning_effort"] = "low"
 
-        # Only documented OpenAI-compatible fields are sent. Provider/model
-        # compatibility is explicit in MODEL_ID; unsupported extensions are not
-        # guessed or silently retried with weaker contracts.
+        # Only documented OpenAI-compatible fields are sent. Model-specific shaping
+        # is limited to documented standard fields; unsupported provider extensions
+        # are not guessed or silently retried with weaker contracts.
         try:
             completion = client.chat.completions.create(**request)
         except Exception as exc:  # provider/network/auth failures fail closed
