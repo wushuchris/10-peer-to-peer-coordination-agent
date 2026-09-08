@@ -292,7 +292,6 @@ def _llm_evaluation_outputs():
 with gr.Blocks(
     title="Agent 10 — Peer-to-Peer Coordination",
     analytics_enabled=False,
-    css=APP_CSS,
 ) as demo:
     gr.HTML(
         """
@@ -463,4 +462,4 @@ with gr.Blocks(
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(css=APP_CSS)
