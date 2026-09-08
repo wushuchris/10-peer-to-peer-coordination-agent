@@ -227,7 +227,12 @@ class PeerAgent:
 
         Missing dependencies cause a local wait. Missing handlers, conflicting
         outputs, or handler failures fail closed into protocol escalation.
+        Once the peer is escalated, execution is permanently suppressed for the
+        current mission so a known failure cannot trigger repeated side effects.
         """
+
+        if self.state.status is PeerStatus.ESCALATED:
+            return ()
 
         results: list[WorkExecutionResult] = []
         for work_id in self.state.accepted_work_ids:
