@@ -1,10 +1,24 @@
+---
+title: Agent 10 — Peer-to-Peer Coordination
+emoji: 🤝
+colorFrom: indigo
+colorTo: blue
+sdk: gradio
+sdk_version: 6.26.0
+app_file: app.py
+python_version: "3.11"
+license: mit
+pinned: false
+short_description: Typed peer coordination without a central orchestrator
+---
+
 # Agent 10 — Peer-to-Peer Coordination Agent
 
 Peer-to-peer multi-agent coordination with typed messaging, local state, bounded decisions, auditable communication, deterministic verification, and optional LLM-assisted work products.
 
 ## Status
 
-**Core system and Gradio demo implemented. Hugging Face deployment and live production validation are next.**
+**Core system, Gradio demo, and gated GitHub → Hugging Face deployment workflow are implemented. Live Space authorization and production validation are next.**
 
 This is Agent 10 in the **30 Agents for AI Engineers** portfolio. It moves beyond centralized multi-agent orchestration by allowing specialized peers to coordinate directly while keeping the protocol controlled, testable, and observable.
 
@@ -324,6 +338,21 @@ HF_BASE_URL=https://router.huggingface.co/v1
 
 Never commit real token values. `.env.example` contains placeholders only.
 
+## Hugging Face Deployment
+
+GitHub remains the source of truth. `.github/workflows/deploy-huggingface.yml` runs the complete automated test suite before syncing `main` to the public Hugging Face Space:
+
+```text
+FlyingNunchucks/10-peer-to-peer-coordination-agent
+```
+
+The workflow uses two intentionally separate credentials:
+
+- GitHub secret `HF_DEPLOY_TOKEN` — write-scoped deployment credential used only by GitHub Actions.
+- Hugging Face Space secret `HF_TOKEN` — runtime inference credential used only by optional LLM-assisted mode.
+
+The workflow safely skips deployment when `HF_DEPLOY_TOKEN` is not configured, while still running tests. It also supports `workflow_dispatch` for a manual re-deploy after credentials are configured.
+
 ## Run Locally
 
 ```bash
@@ -370,7 +399,8 @@ The repository currently contains **102 automated tests** covering protocol sche
 ├── tests/
 └── .github/
     └── workflows/
-        └── tests.yml
+        ├── tests.yml
+        └── deploy-huggingface.yml
 ```
 
 ## Engineering Principles
