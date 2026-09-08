@@ -130,14 +130,19 @@ class MessageBus:
         )
 
     def _validate_context(self, envelope: MessageEnvelope) -> None:
-        self._registry.require_available(envelope.sender_id)
+        # Identity must always be registered. An unavailable peer is allowed to
+        # release an existing claim so the network can converge cleanly, but it
+        # cannot claim new work or send other active-work messages.
+        self._registry.get(envelope.sender_id)
+        if not isinstance(envelope.payload, RoleReleasePayload):
+            self._registry.require_available(envelope.sender_id)
 
         if envelope.recipient_id != BROADCAST_RECIPIENT:
             if envelope.recipient_id == envelope.sender_id:
                 raise TransportError("direct peer messages cannot target the sender itself")
             self._registry.require_available(envelope.recipient_id)
 
-        if isinstance(envelope.payload, (RoleClaimPayload, RoleReleasePayload)):
+        if isinstance(envelope.payload, RoleClaimPayload):
             self._registry.require_role_eligibility(
                 envelope.sender_id,
                 envelope.payload.role,
