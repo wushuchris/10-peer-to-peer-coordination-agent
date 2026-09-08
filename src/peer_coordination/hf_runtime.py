@@ -30,6 +30,31 @@ _TASK_SCHEMAS: dict[str, type[StrictModel]] = {
     "synthesis": SynthesizerModelOutput,
 }
 
+# Reasoning models can spend completion tokens before the visible JSON is fully
+# emitted. Keep task-specific ceilings bounded, but large enough that a valid
+# structured object can finish. These are provider-call limits only; application
+# schemas and deterministic validation remain authoritative.
+_TASK_MAX_TOKENS: dict[str, int] = {
+    "analysis": 1800,
+    "critique": 2400,
+    "synthesis": 2000,
+}
+
+_TASK_OUTPUT_HINTS: dict[str, str] = {
+    "analysis": (
+        "Keep the JSON concise: use no more than 4 claims, keep each claim brief, "
+        "and keep the summary under 500 characters."
+    ),
+    "critique": (
+        "Keep the JSON concise: review_summary under 500 characters, no more than "
+        "3 concerns, and each concern issue under 400 characters."
+    ),
+    "synthesis": (
+        "Keep the JSON concise: brief under 1200 characters and include only the "
+        "verified evidence IDs supplied by the application."
+    ),
+}
+
 
 def _safe_provider_error(exc: Exception, *, token: str) -> str:
     """Return a bounded diagnostic without leaking credentials."""
@@ -90,15 +115,20 @@ class HuggingFaceStructuredChatClient(HuggingFaceChatClient):
             },
         }
 
+        task_max_tokens = max(self.max_tokens, _TASK_MAX_TOKENS[task_name])
+        bounded_system_prompt = (
+            f"{system_prompt}\n\nOutput-size requirement: {_TASK_OUTPUT_HINTS[task_name]}"
+        )
+
         client = OpenAI(base_url=self.base_url, api_key=self.token)
         request: dict[str, object] = {
             "model": self.model_id,
             "messages": (
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": bounded_system_prompt},
                 {"role": "user", "content": user_prompt},
             ),
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
+            "max_tokens": task_max_tokens,
             "response_format": response_format,
         }
 
@@ -112,7 +142,18 @@ class HuggingFaceStructuredChatClient(HuggingFaceChatClient):
                 _safe_provider_error(exc, token=self.token)
             ) from exc
 
-        content = completion.choices[0].message.content
+        choice = completion.choices[0]
+        finish_reason = getattr(choice, "finish_reason", None)
+        if finish_reason == "length":
+            raise StructuredModelError(
+                f"model structured response was truncated at max_tokens={task_max_tokens}"
+            )
+        if finish_reason not in {None, "stop"}:
+            raise StructuredModelError(
+                f"model structured response ended unexpectedly: finish_reason={finish_reason}"
+            )
+
+        content = choice.message.content
         if not isinstance(content, str) or not content.strip():
             raise StructuredModelError("model returned an empty chat response")
         return content
