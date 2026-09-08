@@ -39,6 +39,8 @@ class TransportAuditEvent:
     """Append-only record of transport behavior."""
 
     message_id: str
+    message_type: str
+    correlation_id: str | None
     status: TransportStatus
     sender_id: str
     recipient_id: str
@@ -78,6 +80,8 @@ class MessageBus:
         if envelope.message_id in self._delivered_message_ids:
             event = TransportAuditEvent(
                 message_id=envelope.message_id,
+                message_type=envelope.message_type.value,
+                correlation_id=envelope.correlation_id,
                 status=TransportStatus.DUPLICATE,
                 sender_id=envelope.sender_id,
                 recipient_id=envelope.recipient_id,
@@ -98,6 +102,8 @@ class MessageBus:
             self._audit_log.append(
                 TransportAuditEvent(
                     message_id=envelope.message_id,
+                    message_type=envelope.message_type.value,
+                    correlation_id=envelope.correlation_id,
                     status=TransportStatus.REJECTED,
                     sender_id=envelope.sender_id,
                     recipient_id=envelope.recipient_id,
@@ -116,6 +122,8 @@ class MessageBus:
         self._audit_log.append(
             TransportAuditEvent(
                 message_id=envelope.message_id,
+                message_type=envelope.message_type.value,
+                correlation_id=envelope.correlation_id,
                 status=TransportStatus.DELIVERED,
                 sender_id=envelope.sender_id,
                 recipient_id=envelope.recipient_id,
