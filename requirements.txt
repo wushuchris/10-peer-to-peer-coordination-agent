@@ -1,3 +1,4 @@
 pydantic>=2.7,<3
 pytest>=8,<9
 openai>=1.40,<3
+gradio>=6.26,<7
