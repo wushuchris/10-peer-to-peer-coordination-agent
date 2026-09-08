@@ -89,11 +89,12 @@ def _run_recorded_call(
     monkeypatch: pytest.MonkeyPatch,
     *,
     task_name: str,
+    model_id: str = "Qwen/Qwen3.8-27B:ovhcloud",
 ) -> dict[str, object]:
     _install_fake_openai(monkeypatch, RecordingOpenAI)
     RecordingOpenAI.last_request = None
     client = HuggingFaceStructuredChatClient(
-        model_id="Qwen/Qwen3.8-27B:ovhcloud",
+        model_id=model_id,
         token="hf_example",
     )
     client.complete_json(
@@ -124,7 +125,8 @@ def test_analysis_request_uses_strict_pydantic_json_schema(
     assert {"summary", "claims", "assumptions", "confidence"}.issubset(
         set(schema["properties"])
     )
-    assert request["max_tokens"] == 1800
+    assert request["max_tokens"] == 3200
+    assert request["reasoning_effort"] == "low"
     assert "extra_body" not in request
 
 
@@ -132,9 +134,9 @@ def test_each_bounded_task_gets_its_own_provider_schema_and_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     expected = {
-        "analysis": ("AnalystModelOutput", 1800),
-        "critique": ("SkepticModelOutput", 2400),
-        "synthesis": ("SynthesizerModelOutput", 2000),
+        "analysis": ("AnalystModelOutput", 3200),
+        "critique": ("SkepticModelOutput", 3200),
+        "synthesis": ("SynthesizerModelOutput", 2400),
     }
     for task_name, (schema_name, max_tokens) in expected.items():
         request = _run_recorded_call(monkeypatch, task_name=task_name)
@@ -145,6 +147,18 @@ def test_each_bounded_task_gets_its_own_provider_schema_and_budget(
         assert json_schema["name"] == schema_name
         assert json_schema["strict"] is True
         assert request["max_tokens"] == max_tokens
+        assert request["reasoning_effort"] == "low"
+
+
+def test_non_qwen_model_does_not_receive_qwen_reasoning_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _run_recorded_call(
+        monkeypatch,
+        task_name="analysis",
+        model_id="example/non-reasoning-model",
+    )
+    assert "reasoning_effort" not in request
 
 
 def test_critique_request_instructs_bounded_concise_output(
@@ -168,7 +182,7 @@ def test_length_finish_reason_reports_truncation_before_json_parse(
         token="hf_example",
     )
 
-    with pytest.raises(StructuredModelError, match="truncated at max_tokens=2400"):
+    with pytest.raises(StructuredModelError, match="truncated at max_tokens=3200"):
         client.complete_json(
             task_name="critique",
             system_prompt="system",
