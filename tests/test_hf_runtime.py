@@ -60,7 +60,7 @@ def _install_fake_openai(monkeypatch: pytest.MonkeyPatch, client_type: type) -> 
     monkeypatch.setitem(sys.modules, "openai", module)
 
 
-def test_qwen_live_request_requires_json_and_disables_thinking(
+def test_qwen_live_request_uses_provider_supported_json_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_fake_openai(monkeypatch, RecordingOpenAI)
@@ -80,15 +80,10 @@ def test_qwen_live_request_requires_json_and_disables_thinking(
     request = RecordingOpenAI.last_request
     assert request is not None
     assert request["response_format"] == {"type": "json_object"}
-    assert request["extra_body"] == {
-        "chat_template_kwargs": {
-            "enable_thinking": False,
-            "preserve_thinking": False,
-        }
-    }
+    assert "extra_body" not in request
 
 
-def test_non_qwen_live_request_uses_json_without_qwen_template_options(
+def test_non_qwen_live_request_uses_same_provider_supported_json_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_fake_openai(monkeypatch, RecordingOpenAI)
