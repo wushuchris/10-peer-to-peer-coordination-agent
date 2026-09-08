@@ -1,9 +1,9 @@
 """Production Hugging Face runtime adapter for bounded JSON work products.
 
 This module keeps provider-specific request shaping outside the coordination
-control plane. It strengthens the live adapter by requesting JSON mode and by
-disabling Qwen reasoning text for tasks whose only allowed output is a bounded
-JSON work-product proposal.
+control plane. The live adapter requests provider-level JSON output and then
+passes the response through the same strict parser and Pydantic validation used
+by the bounded work handlers.
 """
 
 from __future__ import annotations
@@ -74,18 +74,9 @@ class HuggingFaceStructuredChatClient(HuggingFaceChatClient):
             "response_format": {"type": "json_object"},
         }
 
-        # Qwen3.8 enables adaptive thinking by default. These handlers are not
-        # asking the model for hidden reasoning; they require one bounded JSON
-        # proposal, so suppress reasoning text at the chat-template boundary.
-        canonical_model = self.model_id.split(":", 1)[0]
-        if canonical_model.startswith("Qwen/"):
-            request["extra_body"] = {
-                "chat_template_kwargs": {
-                    "enable_thinking": False,
-                    "preserve_thinking": False,
-                }
-            }
-
+        # Keep the live request to provider-supported OpenAI-compatible fields.
+        # Model-specific chat-template arguments are intentionally excluded here:
+        # unsupported provider extensions must not prevent a bounded JSON call.
         try:
             completion = client.chat.completions.create(**request)
         except Exception as exc:  # provider/network/auth failures fail closed
