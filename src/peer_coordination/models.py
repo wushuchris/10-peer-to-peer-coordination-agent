@@ -133,9 +133,15 @@ class PeerState(StrictModel):
     claimed_role: PeerRole | None = None
     known_peer_ids: tuple[Identifier, ...] = ()
     received_message_ids: tuple[Identifier, ...] = ()
+    accepted_work_ids: tuple[Identifier, ...] = ()
     completed_work_ids: tuple[Identifier, ...] = ()
 
-    @field_validator("known_peer_ids", "received_message_ids", "completed_work_ids")
+    @field_validator(
+        "known_peer_ids",
+        "received_message_ids",
+        "accepted_work_ids",
+        "completed_work_ids",
+    )
     @classmethod
     def identifiers_must_be_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         if len(value) != len(set(value)):
