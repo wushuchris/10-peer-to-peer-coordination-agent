@@ -37,8 +37,10 @@ jobs:
     env:
       HF_DEPLOY_TOKEN: ${{ secrets.HF_DEPLOY_TOKEN }}
     steps:
-      - name: Check out repository
+      - name: Check out repository with full history
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Check deployment credential
         id: credential
@@ -51,16 +53,14 @@ jobs:
             echo "HF_DEPLOY_TOKEN is not configured; deployment will be skipped safely."
           fi
 
-      - name: Sync GitHub source to Hugging Face Space
+      - name: Push GitHub main to Hugging Face Space
         if: steps.credential.outputs.available == 'true'
-        uses: huggingface/hub-sync@v0.1.0
-        with:
-          github_repo_id: ${{ github.repository }}
-          huggingface_repo_id: FlyingNunchucks/10-peer-to-peer-coordination-agent
-          hf_token: ${{ secrets.HF_DEPLOY_TOKEN }}
-          repo_type: space
-          space_sdk: gradio
-          private: false
+        shell: bash
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "github-actions"
+          git remote add space "https://FlyingNunchucks:${HF_DEPLOY_TOKEN}@huggingface.co/spaces/FlyingNunchucks/10-peer-to-peer-coordination-agent"
+          git push --force space main
 
       - name: Deployment not configured
         if: steps.credential.outputs.available != 'true'
