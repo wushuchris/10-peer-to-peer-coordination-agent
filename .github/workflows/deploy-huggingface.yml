@@ -1,0 +1,68 @@
+name: Deploy to Hugging Face
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: huggingface-space-deploy
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  deploy:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      HF_DEPLOY_TOKEN: ${{ secrets.HF_DEPLOY_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Check deployment credential
+        id: credential
+        shell: bash
+        run: |
+          if [ -n "$HF_DEPLOY_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "HF_DEPLOY_TOKEN is not configured; deployment will be skipped safely."
+          fi
+
+      - name: Sync GitHub source to Hugging Face Space
+        if: steps.credential.outputs.available == 'true'
+        uses: huggingface/hub-sync@v0.1.0
+        with:
+          github_repo_id: ${{ github.repository }}
+          huggingface_repo_id: FlyingNunchucks/10-peer-to-peer-coordination-agent
+          hf_token: ${{ secrets.HF_DEPLOY_TOKEN }}
+          repo_type: space
+          space_sdk: gradio
+          private: false
+
+      - name: Deployment not configured
+        if: steps.credential.outputs.available != 'true'
+        run: |
+          echo "Tests passed, but Hugging Face deployment was skipped because HF_DEPLOY_TOKEN is not configured."
