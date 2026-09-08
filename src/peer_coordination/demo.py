@@ -13,7 +13,7 @@ from .evaluation import run_architecture_evaluation
 from .hf_runtime import HuggingFaceStructuredChatClient
 from .llm import JsonChatModel, ModelConfigurationError, build_llm_research_demo_system
 from .llm_evaluation import run_llm_governance_evaluation
-from .models import PeerStatus, StrictModel, WorkResultPayload
+from .models import BROADCAST_RECIPIENT, PeerStatus, StrictModel, WorkResultPayload
 from .research import (
     FINAL_WORK_PRODUCT_ID,
     SYNTHESIZER_AGENT_ID,
@@ -66,6 +66,18 @@ class DemoMessageRow(StrictModel):
     status: str
 
 
+class DemoConversationRow(StrictModel):
+    """Human-readable rendering of one real protocol transport event."""
+
+    step: int
+    speaker: str
+    audience: str
+    statement: str
+    protocol_event: str
+    message_id: str
+    correlation_id: str
+
+
 class DemoSnapshot(StrictModel):
     mode: DemoMode
     completed: bool
@@ -78,6 +90,7 @@ class DemoSnapshot(StrictModel):
     evidence: tuple[DemoEvidenceRow, ...]
     work_products: tuple[DemoWorkProductRow, ...]
     messages: tuple[DemoMessageRow, ...]
+    conversation: tuple[DemoConversationRow, ...]
 
 
 def _drive_system(
@@ -111,6 +124,115 @@ def _drive_system(
         ):
             return None, tuple(failure_details)
     return None, tuple(failure_details)
+
+
+def _friendly_capability(value: str) -> str:
+    return value.replace("_", " ")
+
+
+def _conversation_statement(
+    *,
+    message_type: str,
+    speaker_role: str,
+    speaker_capability: str,
+    request_number: int,
+    delivered: bool,
+) -> str:
+    """Translate protocol mechanics into business-readable speech.
+
+    The wording is intentionally generic: it describes what the observed event
+    means without inventing payload facts that are not present in the audit log.
+    """
+
+    if not delivered:
+        return "This coordination message was not delivered, so no peer acted on it."
+
+    stage_labels = (
+        "source evidence",
+        "market analysis",
+        "independent verification",
+        "final decision brief",
+    )
+    stage = stage_labels[min(request_number, len(stage_labels) - 1)]
+
+    statements = {
+        "mission_announcement": (
+            "Team, Asteria Robotics needs a market-entry decision. I’m sharing the mission "
+            "so each peer can decide locally how to contribute."
+        ),
+        "capability_advertisement": (
+            f"Here’s what I can contribute: {_friendly_capability(speaker_capability)}."
+        ),
+        "role_claim": f"I’ll take responsibility for the {speaker_role} role on this mission.",
+        "role_release": (
+            f"My {speaker_role} responsibilities are complete, so I’m releasing that role."
+        ),
+        "work_request": (
+            f"The mission now needs {stage}. I’m asking the peer network to respond based "
+            "on capability rather than assigning a worker centrally."
+        ),
+        "work_result": (
+            f"I completed my {speaker_role} work and shared the resulting work product "
+            "with the peer network."
+        ),
+        "challenge": (
+            "I found something that needs to be challenged before the mission can safely continue."
+        ),
+        "challenge_response": (
+            "I’m responding to the challenge with a correction or explanation for independent review."
+        ),
+        "status": "I’m sharing my current coordination status with the peer network.",
+        "escalation": (
+            "I can’t safely continue this work under the current conditions, so I’m escalating."
+        ),
+    }
+    return statements.get(
+        message_type,
+        "I’m sharing a coordination event with the peer network.",
+    )
+
+
+def _conversation_rows(system) -> tuple[DemoConversationRow, ...]:
+    profiles = {profile.agent_id: profile for profile in system.registry.all_profiles()}
+    request_number = 0
+    rows: list[DemoConversationRow] = []
+
+    for step, event in enumerate(system.bus.audit_log, start=1):
+        profile = profiles[event.sender_id]
+        role = (
+            profile.eligible_roles[0].value.replace("_", " ").title()
+            if profile.eligible_roles
+            else "Peer"
+        )
+        capability = profile.capabilities[0] if profile.capabilities else "coordination"
+        if event.recipient_id == BROADCAST_RECIPIENT:
+            audience = "Peer network"
+        else:
+            audience = profiles[event.recipient_id].display_name
+
+        delivered = event.status.value == "delivered"
+        statement = _conversation_statement(
+            message_type=event.message_type,
+            speaker_role=role,
+            speaker_capability=capability,
+            request_number=request_number,
+            delivered=delivered,
+        )
+        rows.append(
+            DemoConversationRow(
+                step=step,
+                speaker=profile.display_name,
+                audience=audience,
+                statement=statement,
+                protocol_event=event.message_type,
+                message_id=event.message_id,
+                correlation_id=event.correlation_id or "—",
+            )
+        )
+        if delivered and event.message_type == "work_request":
+            request_number += 1
+
+    return tuple(rows)
 
 
 def run_demo(
@@ -212,6 +334,7 @@ def run_demo(
             )
             for event in system.bus.audit_log
         )
+        conversation = _conversation_rows(system)
 
         return DemoSnapshot(
             mode=resolved_mode,
@@ -227,6 +350,7 @@ def run_demo(
             evidence=evidence,
             work_products=work_products,
             messages=messages,
+            conversation=conversation,
         )
     except ModelConfigurationError as exc:
         raise ModelConfigurationError(
@@ -256,7 +380,6 @@ def architecture_comparison_rows() -> tuple[list[list[object]], tuple[str, ...]]
                     metrics.failure_code or "—",
                 ]
             )
-    # Preserve first occurrence while removing repeated cross-scenario observations.
     return rows, tuple(dict.fromkeys(observations))
 
 
