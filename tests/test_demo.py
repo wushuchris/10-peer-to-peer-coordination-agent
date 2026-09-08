@@ -109,3 +109,19 @@ def test_llm_runtime_status_never_requires_live_call(monkeypatch) -> None:
 def test_app_imports_and_builds_gradio_blocks() -> None:
     app = importlib.import_module("app")
     assert app.demo is not None
+
+
+def test_business_first_gradio_outputs_include_executive_story_and_real_event_transcript() -> None:
+    app = importlib.import_module("app")
+    outputs = app._mission_outputs("Deterministic")
+
+    assert len(outputs) == 9
+    status, brief, business_summary, conversation = outputs[:4]
+    assert "Mission completed" in status
+    assert "Final market-entry brief" in brief
+    assert "Executive summary" in business_summary
+    assert "Enter With Conditions" in business_summary
+    assert "No central AI manager" in business_summary
+    assert "This is not a scripted chat" in conversation
+    assert "mission_announcement" in conversation
+    assert "role_claim" in conversation
