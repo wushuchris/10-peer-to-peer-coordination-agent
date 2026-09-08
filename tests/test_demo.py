@@ -48,6 +48,29 @@ def test_demo_exposes_peer_state_work_products_and_typed_protocol_trace() -> Non
     assert any(row.correlation_id != "—" for row in snapshot.messages)
 
 
+def test_business_conversation_is_traceable_to_real_protocol_events() -> None:
+    snapshot = run_demo()
+
+    assert snapshot.conversation
+    assert len(snapshot.conversation) == len(snapshot.messages)
+    messages_by_id = {row.message_id: row for row in snapshot.messages}
+
+    for conversation in snapshot.conversation:
+        source = messages_by_id[conversation.message_id]
+        assert conversation.protocol_event == source.message_type
+        assert conversation.correlation_id == source.correlation_id
+        assert conversation.statement
+
+    assert snapshot.conversation[0].protocol_event == "mission_announcement"
+    assert "Asteria Robotics" in snapshot.conversation[0].statement
+    assert any(
+        row.protocol_event == "work_request" and "centrally" in row.statement
+        for row in snapshot.conversation
+    )
+    assert any(row.speaker == "Analyst" for row in snapshot.conversation)
+    assert any(row.speaker == "Skeptic / Verifier" for row in snapshot.conversation)
+
+
 def test_architecture_comparison_rows_include_both_architectures_per_scenario() -> None:
     rows, observations = architecture_comparison_rows()
 
