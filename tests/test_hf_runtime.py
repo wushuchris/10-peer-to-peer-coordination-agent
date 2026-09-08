@@ -68,7 +68,7 @@ def _run_recorded_call(
     _install_fake_openai(monkeypatch, RecordingOpenAI)
     RecordingOpenAI.last_request = None
     client = HuggingFaceStructuredChatClient(
-        model_id="Qwen/Qwen3-32B:cerebras",
+        model_id="openai/gpt-oss-120b:fireworks-ai",
         token="hf_example",
     )
     client.complete_json(
@@ -126,7 +126,7 @@ def test_unknown_bounded_task_fails_before_provider_call(
     _install_fake_openai(monkeypatch, RecordingOpenAI)
     RecordingOpenAI.last_request = None
     client = HuggingFaceStructuredChatClient(
-        model_id="Qwen/Qwen3-32B:cerebras",
+        model_id="openai/gpt-oss-120b:fireworks-ai",
         token="hf_example",
     )
 
@@ -145,7 +145,7 @@ def test_provider_failure_is_redacted_and_fails_closed(
 ) -> None:
     _install_fake_openai(monkeypatch, FailingOpenAI)
     client = HuggingFaceStructuredChatClient(
-        model_id="Qwen/Qwen3-32B:cerebras",
+        model_id="openai/gpt-oss-120b:fireworks-ai",
         token="hf_secret_runtime_token",
     )
 
