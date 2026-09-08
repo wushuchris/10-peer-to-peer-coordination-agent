@@ -10,7 +10,8 @@ from __future__ import annotations
 from enum import Enum
 
 from .evaluation import run_architecture_evaluation
-from .llm import HuggingFaceChatClient, JsonChatModel, ModelConfigurationError, build_llm_research_demo_system
+from .hf_runtime import HuggingFaceStructuredChatClient
+from .llm import JsonChatModel, ModelConfigurationError, build_llm_research_demo_system
 from .llm_evaluation import run_llm_governance_evaluation
 from .models import PeerStatus, StrictModel, WorkResultPayload
 from .research import (
@@ -20,6 +21,7 @@ from .research import (
     build_research_demo_system,
     make_initial_research_request,
 )
+from .runtime import WorkExecutionStatus
 
 
 class DemoMode(str, Enum):
@@ -78,10 +80,15 @@ class DemoSnapshot(StrictModel):
     messages: tuple[DemoMessageRow, ...]
 
 
-def _drive_system(system, *, max_cycles: int = 12) -> WorkResultPayload | None:
+def _drive_system(
+    system,
+    *,
+    max_cycles: int = 12,
+) -> tuple[WorkResultPayload | None, tuple[str, ...]]:
     if max_cycles < 1:
         raise ValueError("max_cycles must be at least 1")
 
+    failure_details: list[str] = []
     initiator = system.runtime.get_peer(SYNTHESIZER_AGENT_ID)
     initiator.broadcast_mission()
     system.runtime.run_round()
@@ -90,16 +97,20 @@ def _drive_system(system, *, max_cycles: int = 12) -> WorkResultPayload | None:
 
     for _ in range(max_cycles):
         system.runtime.run_round()
-        system.runtime.run_execution_round()
+        executions = system.runtime.run_execution_round()
+        for execution in executions:
+            if execution.status is WorkExecutionStatus.ESCALATED:
+                failure_details.append(f"{execution.agent_id}: {execution.detail}")
+
         final = initiator.work_products.get(FINAL_WORK_PRODUCT_ID)
         if final is not None:
-            return final
+            return final, tuple(failure_details)
         if any(
             system.runtime.get_peer(profile.agent_id).state.status is PeerStatus.ESCALATED
             for profile in system.registry.all_profiles()
         ):
-            return None
-    return None
+            return None, tuple(failure_details)
+    return None, tuple(failure_details)
 
 
 def run_demo(
@@ -113,12 +124,16 @@ def run_demo(
     resolved_mode = DemoMode(mode)
     try:
         if resolved_mode is DemoMode.LLM_ASSISTED:
-            live_model = model if model is not None else HuggingFaceChatClient.from_env()
+            live_model = (
+                model
+                if model is not None
+                else HuggingFaceStructuredChatClient.from_env()
+            )
             system = build_llm_research_demo_system(live_model)
         else:
             system = build_research_demo_system()
 
-        final = _drive_system(system, max_cycles=max_cycles)
+        final, failure_details = _drive_system(system, max_cycles=max_cycles)
         error = None
         artifact: FinalBriefArtifact | None = None
         if final is not None:
@@ -132,6 +147,8 @@ def run_demo(
             )
             if escalated:
                 error = f"Mission failed closed after peer escalation: {', '.join(escalated)}."
+                if failure_details:
+                    error += " Diagnostic: " + " | ".join(failure_details)
             else:
                 error = "Mission did not produce a final brief within the bounded cycle limit."
 
@@ -271,7 +288,7 @@ def llm_runtime_status() -> str:
     """Report live-model readiness without ever returning secret material."""
 
     try:
-        client = HuggingFaceChatClient.from_env()
+        client = HuggingFaceStructuredChatClient.from_env()
     except ModelConfigurationError:
         return "Not configured — deterministic mode remains fully available."
     return f"Configured for model: {client.model_id}"
