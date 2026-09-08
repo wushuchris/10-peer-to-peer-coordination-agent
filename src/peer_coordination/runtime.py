@@ -421,8 +421,13 @@ class PeerAgent:
             )
             self.bus.send(envelope)
             self._observed_claims.setdefault(decision.role, set()).discard(self.agent_id)
+            next_status = (
+                PeerStatus.COMPLETED
+                if self.state.status is PeerStatus.COMPLETED
+                else PeerStatus.WAITING
+            )
             self.state = self.state.model_copy(
-                update={"claimed_role": None, "status": PeerStatus.WAITING}
+                update={"claimed_role": None, "status": next_status}
             )
             return (envelope.message_id,)
 
