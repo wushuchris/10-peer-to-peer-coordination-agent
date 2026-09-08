@@ -60,49 +60,84 @@ def _install_fake_openai(monkeypatch: pytest.MonkeyPatch, client_type: type) -> 
     monkeypatch.setitem(sys.modules, "openai", module)
 
 
-def test_qwen_live_request_uses_provider_supported_json_mode(
+def _run_recorded_call(
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
+    *,
+    task_name: str,
+) -> dict[str, object]:
     _install_fake_openai(monkeypatch, RecordingOpenAI)
     RecordingOpenAI.last_request = None
     client = HuggingFaceStructuredChatClient(
-        model_id="Qwen/Qwen3.8-27B",
+        model_id="Qwen/Qwen3-32B:cerebras",
         token="hf_example",
     )
-
-    response = client.complete_json(
-        task_name="analysis",
-        system_prompt="system",
-        user_prompt="user",
-    )
-
-    assert response == '{"ok": true}'
-    request = RecordingOpenAI.last_request
-    assert request is not None
-    assert request["response_format"] == {"type": "json_object"}
-    assert "extra_body" not in request
-
-
-def test_non_qwen_live_request_uses_same_provider_supported_json_mode(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _install_fake_openai(monkeypatch, RecordingOpenAI)
-    RecordingOpenAI.last_request = None
-    client = HuggingFaceStructuredChatClient(
-        model_id="openai/gpt-oss-20b",
-        token="hf_example",
-    )
-
     client.complete_json(
-        task_name="analysis",
+        task_name=task_name,
         system_prompt="system",
         user_prompt="user",
     )
-
     request = RecordingOpenAI.last_request
     assert request is not None
-    assert request["response_format"] == {"type": "json_object"}
+    return request
+
+
+def test_analysis_request_uses_strict_pydantic_json_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _run_recorded_call(monkeypatch, task_name="analysis")
+    response_format = request["response_format"]
+    assert isinstance(response_format, dict)
+    assert response_format["type"] == "json_schema"
+    json_schema = response_format["json_schema"]
+    assert isinstance(json_schema, dict)
+    assert json_schema["name"] == "AnalystModelOutput"
+    assert json_schema["strict"] is True
+    schema = json_schema["schema"]
+    assert isinstance(schema, dict)
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+    assert {"summary", "claims", "assumptions", "confidence"}.issubset(
+        set(schema["properties"])
+    )
     assert "extra_body" not in request
+
+
+def test_each_bounded_task_gets_its_own_provider_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = {
+        "analysis": "AnalystModelOutput",
+        "critique": "SkepticModelOutput",
+        "synthesis": "SynthesizerModelOutput",
+    }
+    for task_name, schema_name in expected.items():
+        request = _run_recorded_call(monkeypatch, task_name=task_name)
+        response_format = request["response_format"]
+        assert isinstance(response_format, dict)
+        json_schema = response_format["json_schema"]
+        assert isinstance(json_schema, dict)
+        assert json_schema["name"] == schema_name
+        assert json_schema["strict"] is True
+
+
+def test_unknown_bounded_task_fails_before_provider_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_fake_openai(monkeypatch, RecordingOpenAI)
+    RecordingOpenAI.last_request = None
+    client = HuggingFaceStructuredChatClient(
+        model_id="Qwen/Qwen3-32B:cerebras",
+        token="hf_example",
+    )
+
+    with pytest.raises(StructuredModelError, match="no provider JSON schema registered"):
+        client.complete_json(
+            task_name="unknown",
+            system_prompt="system",
+            user_prompt="user",
+        )
+
+    assert RecordingOpenAI.last_request is None
 
 
 def test_provider_failure_is_redacted_and_fails_closed(
@@ -110,7 +145,7 @@ def test_provider_failure_is_redacted_and_fails_closed(
 ) -> None:
     _install_fake_openai(monkeypatch, FailingOpenAI)
     client = HuggingFaceStructuredChatClient(
-        model_id="Qwen/Qwen3.8-27B",
+        model_id="Qwen/Qwen3-32B:cerebras",
         token="hf_secret_runtime_token",
     )
 
