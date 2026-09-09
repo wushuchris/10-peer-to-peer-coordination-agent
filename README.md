@@ -14,13 +14,81 @@ short_description: Typed peer coordination without a central orchestrator
 
 # Agent 10 — Peer-to-Peer Coordination Agent
 
-Peer-to-peer multi-agent coordination with typed messaging, local state, bounded decisions, auditable communication, deterministic verification, and optional LLM-assisted work products.
+A production-validated multi-agent coordination system where specialized peers communicate directly, self-select bounded work, challenge one another, and publish only after verification—without a central semantic orchestrator assigning the work.
 
 ## Status
 
-**Core system, Gradio demo, and gated GitHub → Hugging Face deployment workflow are implemented. Live Space authorization and production validation are next.**
+**Complete and production validated — September 2026.**
 
-This is Agent 10 in the **30 Agents for AI Engineers** portfolio. It moves beyond centralized multi-agent orchestration by allowing specialized peers to coordinate directly while keeping the protocol controlled, testable, and observable.
+- **Public repo:** https://github.com/wushuchris/10-peer-to-peer-coordination-agent
+- **Live demo:** https://huggingface.co/spaces/FlyingNunchucks/10-peer-to-peer-coordination-agent
+- **Automated tests:** **112 passed**
+- **Live LLM path:** validated with `Qwen/Qwen3.8-27B:ovhcloud`
+- **Deployment:** GitHub Actions tests gate automatic GitHub → Hugging Face deployment
+
+This is Agent 10 in the **30 Agents for AI Engineers** portfolio. It moves beyond centralized multi-agent orchestration by allowing specialized peers to coordinate directly while keeping the protocol controlled, testable, observable, and auditable.
+
+## Business Story
+
+The public-safe demo asks a simple management question:
+
+> **Should fictional Asteria Robotics enter the fictional Borealis industrial automation market?**
+
+Instead of asking one AI to research, analyze, verify, and decide everything, four specialized peers collaborate:
+
+1. **Source Finder** — finds the approved facts.
+2. **Analyst** — turns evidence into structured insight.
+3. **Skeptic / Verifier** — challenges weak reasoning and checks the evidence.
+4. **Synthesizer** — prepares the final brief only after verification passes.
+
+The business-facing workflow is:
+
+```text
+Gather evidence
+      ↓
+Analyze evidence
+      ↓
+Verify the analysis
+      ↓
+Publish the final brief
+```
+
+The system reaches:
+
+> **Enter with conditions**
+
+The result is deliberately easy to understand for a non-technical viewer while the underlying engineering evidence remains inspectable.
+
+## Business-First Demo Design
+
+The Gradio app now presents two layers.
+
+### Business layer
+
+The default experience explains:
+
+- the business decision,
+- the four-agent team,
+- the Gather → Analyze → Verify → Publish workflow,
+- the executive recommendation,
+- opportunities and risks,
+- why independent verification matters,
+- and how the agents coordinate in plain English.
+
+### Engineering layer
+
+Technical reviewers can still inspect:
+
+- independent peer state,
+- typed protocol messages,
+- message IDs and correlation IDs,
+- work products,
+- evidence references,
+- centralized-vs-P2P evaluation,
+- adversarial LLM tests,
+- and the raw machine-readable mission snapshot.
+
+The **Agent Conversation** view is not invented dialogue. It is a presentation layer derived from the real append-only typed-message audit trail. Each human-readable line remains traceable to the underlying protocol event.
 
 ## Problem
 
@@ -36,28 +104,15 @@ The goal is not to make several LLMs chat freely. The goal is to engineer the pr
 
 > **A typed peer-to-peer coordination protocol that lets autonomous peers discover one another, propagate mission state, self-select work using local rules, exchange validated work products, resolve bounded disagreements, and maintain an auditable communication history without a central semantic orchestrator.**
 
-## Teaching Principle
+## Teaching Principles
 
 > **The runtime turns the clock; the peers make the decisions.**
 
+and
+
+> **The agents reason with LLMs. The agents coordinate through an engineered protocol.**
+
 The runtime schedules opportunities to act. It does not assign semantic work, choose a worker, or decide the mission outcome.
-
-## Public Demo Scenario
-
-The public-safe demo uses a fictional company, **Asteria Robotics**, evaluating whether to enter the fictional **Borealis industrial automation market**.
-
-Four specialized peers coordinate the mission:
-
-1. **Source Finder** — retrieves approved evidence from a synthetic corpus.
-2. **Analyst** — produces evidence-linked structured analysis.
-3. **Skeptic / Verifier** — checks evidence use, score consistency, and recommendation rules.
-4. **Synthesizer** — publishes the final brief only after verification passes.
-
-The synthetic evidence covers demand, channel readiness, unit economics, certification burden, incumbent concentration, and service coverage.
-
-The deterministic mission produces the recommendation:
-
-> **Enter with conditions**
 
 ## Coordination Architecture
 
@@ -106,7 +161,7 @@ Peer Registry / Discovery
 
 ## Typed Protocol
 
-The protocol currently supports:
+The protocol supports:
 
 - `MISSION_ANNOUNCEMENT`
 - `CAPABILITY_ADVERTISEMENT`
@@ -125,7 +180,7 @@ Structural schema validity is intentionally separate from contextual authorizati
 
 ## Local Coordination
 
-Each peer maintains its own mission state rather than sharing a magical globally synchronized context.
+Each peer maintains its own mission state rather than sharing a globally synchronized hidden context.
 
 Peers locally decide whether to:
 
@@ -185,7 +240,7 @@ Skeptic independently evaluates response
 resolved / revised / disputed
 ```
 
-An Analyst may label a response as revised, but that label is not trusted. The Skeptic must independently validate the replacement work product before publication can continue.
+An Analyst may label a response as revised, but that label is not trusted. The Skeptic independently validates the replacement work product before publication can continue.
 
 ## Failure Containment
 
@@ -198,11 +253,11 @@ The system detects and fails closed on conditions including:
 - unanswered challenges,
 - and general no-progress conditions.
 
-Failure containment does **not** perform advanced replanning or invent replacement agents. That capability belongs to later portfolio agents.
+Failure containment does **not** perform advanced replanning or invent replacement agents. Those capabilities belong to later portfolio agents.
 
 ## Centralized vs Peer-to-Peer Evaluation
 
-The evaluation harness runs the same fictional mission and deterministic work logic under two coordination architectures:
+The evaluation harness runs the same fictional mission and deterministic work logic under two coordination architectures.
 
 ### Peer-to-peer
 
@@ -226,15 +281,15 @@ The comparison measures:
 
 Healthy runs must produce the same final work-product digest. This keeps the comparison focused on coordination architecture rather than different business logic.
 
-The current result is intentionally nuanced:
+The conclusion is intentionally nuanced:
 
 > **Centralized coordination is mechanically simpler and lower-overhead. Peer-to-peer coordination distributes semantic authority and removes the central coordinator dependency, at the cost of additional coordination machinery.**
+
+The failure comparison also avoids overclaiming: losing the central coordinator breaks the centralized baseline but not the P2P system, while losing the only available Analyst blocks both systems. Decentralization removes one dependency; it does not create magical redundancy.
 
 ## Bounded LLM Mode
 
 LLMs are optional and live only inside peer work handlers.
-
-**Agents reason with LLMs. Agents coordinate through an engineered protocol.**
 
 ### Analyst LLM may propose
 
@@ -274,11 +329,28 @@ It cannot change:
 - work-product ID,
 - or publication permission.
 
-Model output is parsed through strict Pydantic schemas with extra fields forbidden.
+The Source Finder remains deterministic so the model cannot invent the evidence corpus.
+
+Model output is constrained by strict Pydantic JSON Schemas with extra fields forbidden. Unknown evidence references, malformed structured output, provider errors, and truncation fail closed.
+
+## Live LLM Configuration Validated
+
+The production Space was validated using:
+
+```text
+MODEL_ID=Qwen/Qwen3.8-27B:ovhcloud
+HF_BASE_URL=https://router.huggingface.co/v1
+```
+
+The runtime token is stored only as the Hugging Face Space secret `HF_TOKEN`.
+
+For Qwen3.8, the provider adapter requests `reasoning_effort="low"` because the default reasoning depth can consume the bounded completion budget before the structured JSON object finishes. Task-specific token ceilings remain bounded, and provider output must still pass the exact application schema.
+
+See [`PRODUCTION_VALIDATION.md`](PRODUCTION_VALIDATION.md) for the live validation record and the provider failures that were converted into regression-tested safeguards.
 
 ## Adversarial LLM Evaluation
 
-The offline evaluation matrix currently covers 11 model-behavior scenarios:
+The offline evaluation matrix covers 11 model-behavior scenarios:
 
 - healthy bounded reasoning,
 - hallucinated Analyst evidence,
@@ -312,46 +384,28 @@ This limitation is explicitly surfaced by the adversarial evaluation rather than
 
 `app.py` provides a public-facing Gradio interface with:
 
+- a **Business Story** view with agent cards, process flow, and executive summary,
+- a protocol-derived **Agent Conversation** view,
 - deterministic and optional LLM-assisted mission modes,
 - final recommendation and verified brief,
-- synthetic evidence table,
-- published work-product table,
-- independent peer-state view,
-- typed protocol transport audit,
+- synthetic evidence and published work products,
+- a **Technical View** with independent peer state and transport audit,
 - centralized-vs-P2P comparison,
 - 11-scenario adversarial LLM evaluation,
 - and a raw machine-readable mission snapshot.
 
 Deterministic mode requires no API token and remains fully functional if the model provider is unavailable.
 
-## Optional Live LLM Configuration
+## Deployment
 
-The live adapter uses the Hugging Face OpenAI-compatible Inference Providers endpoint.
-
-Environment variables:
-
-```text
-HF_TOKEN=<runtime inference token>
-MODEL_ID=<supported Hugging Face model ID>
-HF_BASE_URL=https://router.huggingface.co/v1
-```
-
-Never commit real token values. `.env.example` contains placeholders only.
-
-## Hugging Face Deployment
-
-GitHub remains the source of truth. `.github/workflows/deploy-huggingface.yml` runs the complete automated test suite before syncing `main` to the public Hugging Face Space:
-
-```text
-FlyingNunchucks/10-peer-to-peer-coordination-agent
-```
+GitHub remains the source of truth. The GitHub Actions pipeline runs the complete automated test suite before syncing `main` to the public Hugging Face Space.
 
 The workflow uses two intentionally separate credentials:
 
 - GitHub secret `HF_DEPLOY_TOKEN` — write-scoped deployment credential used only by GitHub Actions.
 - Hugging Face Space secret `HF_TOKEN` — runtime inference credential used only by optional LLM-assisted mode.
 
-The workflow safely skips deployment when `HF_DEPLOY_TOKEN` is not configured, while still running tests. It also supports `workflow_dispatch` for a manual re-deploy after credentials are configured.
+The final business-first UI and both deterministic and live LLM-assisted mission paths were manually validated in the public Space after deployment.
 
 ## Run Locally
 
@@ -370,7 +424,24 @@ python -m pytest -q
 
 ## Current Test Coverage
 
-The repository currently contains **102 automated tests** covering protocol schemas, discovery, transport, authorization, local policy, runtime behavior, work execution, deterministic research, challenge/revision, failure containment, architecture evaluation, bounded LLM behavior, adversarial model scenarios, and Gradio service/UI wiring.
+The repository contains **112 automated tests** covering:
+
+- protocol schemas,
+- discovery and transport,
+- authorization and local policy,
+- independent peer runtime,
+- work execution,
+- deterministic research,
+- challenge/revision,
+- failure containment,
+- centralized-vs-P2P evaluation,
+- bounded LLM behavior,
+- strict provider structured output,
+- live-discovered provider regressions,
+- adversarial model scenarios,
+- business-story presentation,
+- protocol-to-conversation provenance,
+- and Gradio service/UI wiring.
 
 ## Project Structure
 
@@ -378,6 +449,7 @@ The repository currently contains **102 automated tests** covering protocol sche
 .
 ├── app.py
 ├── README.md
+├── PRODUCTION_VALIDATION.md
 ├── requirements.txt
 ├── .env.example
 ├── pyproject.toml
@@ -394,6 +466,7 @@ The repository currently contains **102 automated tests** covering protocol sche
 │       ├── resilience.py
 │       ├── evaluation.py
 │       ├── llm.py
+│       ├── hf_runtime.py
 │       ├── llm_evaluation.py
 │       └── demo.py
 ├── tests/
@@ -413,10 +486,11 @@ The repository currently contains **102 automated tests** covering protocol sche
 - Validate every peer message before it becomes trusted state.
 - Do not use LLM-generated prose as a system identifier.
 - Keep peer local state explicit rather than hiding coordination in one global context.
-- Turn meaningful failures into regression tests.
+- Turn meaningful live failures into regression tests.
 - Fail closed after escalation rather than retrying blindly.
 - Use only synthetic, public-safe demo data.
 - Never commit secrets or private planning material.
+- Present the business story first while preserving technical evidence underneath.
 
 ## Development Workflow
 
@@ -433,7 +507,11 @@ GitHub Actions deployment
       ↓
 Hugging Face Space
       ↓
-Live production validation
+Live deterministic validation
+      ↓
+Live LLM-assisted validation
+      ↓
+Documentation and portfolio closeout
 ```
 
 Deployment is intentionally gated behind successful automated tests.
@@ -450,6 +528,19 @@ To keep the learning objective clear, this build does not implement:
 - or advanced fault-tolerant replanning.
 
 Those capabilities belong to later agents in the portfolio.
+
+## Production Validation
+
+Agent 10 passed the final live checks in both execution modes after the business-first UI redesign:
+
+- deterministic mission completed,
+- LLM-assisted mission completed,
+- recommendation remained `enter_with_conditions`,
+- verification remained `verified`,
+- Business Story rendered correctly,
+- Agent Conversation rendered from real protocol events,
+- Technical View preserved the raw audit evidence,
+- and the public repository hygiene review found no real credentials or private planning material.
 
 ## License
 
