@@ -22,7 +22,7 @@ A production-validated multi-agent coordination system where specialized peers c
 
 - **Public repo:** https://github.com/wushuchris/10-peer-to-peer-coordination-agent
 - **Live demo:** https://huggingface.co/spaces/FlyingNunchucks/10-peer-to-peer-coordination-agent
-- **Automated tests:** **112 passed**
+- **Automated tests:** **115 passed**
 - **Live LLM path:** validated with `Qwen/Qwen3.8-27B:ovhcloud`
 - **Deployment:** GitHub Actions tests gate automatic GitHub → Hugging Face deployment
 
@@ -44,11 +44,11 @@ Instead of asking one AI to research, analyze, verify, and decide everything, fo
 The business-facing workflow is:
 
 ```text
-Gather evidence
+Discover & claim
       ↓
-Analyze evidence
+Exchange work
       ↓
-Verify the analysis
+Challenge & revise
       ↓
 Publish the final brief
 ```
@@ -61,19 +61,22 @@ The result is deliberately easy to understand for a non-technical viewer while t
 
 ## Business-First Demo Design
 
-The Gradio app now presents two layers.
+The Gradio app presents two complementary layers and keeps the reading path intentionally narrow and vertical.
 
 ### Business layer
 
 The default experience explains:
 
 - the business decision,
-- the four-agent team,
-- the Gather → Analyze → Verify → Publish workflow,
+- why a business might choose peer coordination instead of one all-purpose AI,
+- the four-agent team in a vertical roster,
+- the Discover & Claim → Exchange Work → Challenge & Revise → Publish mission path,
 - the executive recommendation,
 - opportunities and risks,
 - why independent verification matters,
-- and how the agents coordinate in plain English.
+- and how the peers coordinate in plain English.
+
+During execution, a **Live Peer Activity** panel makes the coordination visible. It uses a custom RUNNING state, progress indicator, paced protocol-derived events, and a complete scrollable transcript after the mission finishes. The generic Gradio progress overlay is hidden so the agent system's own observable state remains the primary running signal.
 
 ### Engineering layer
 
@@ -88,7 +91,7 @@ Technical reviewers can still inspect:
 - adversarial LLM tests,
 - and the raw machine-readable mission snapshot.
 
-The **Agent Conversation** view is not invented dialogue. It is a presentation layer derived from the real append-only typed-message audit trail. Each human-readable line remains traceable to the underlying protocol event.
+The **Coordination Transcript** is not invented dialogue. It is a presentation layer derived from the real append-only typed-message audit trail. Each human-readable line remains traceable to the underlying protocol event.
 
 ## Problem
 
@@ -384,14 +387,16 @@ This limitation is explicitly surfaced by the adversarial evaluation rather than
 
 `app.py` provides a public-facing Gradio interface with:
 
-- a **Business Story** view with agent cards, process flow, and executive summary,
-- a protocol-derived **Agent Conversation** view,
+- a centered, narrow **Business Story** reading path,
+- a vertical four-peer team roster and mission flow,
+- a **Live Peer Activity** panel with a custom running state, paced protocol-derived playback, and a complete scrollable transcript,
+- a protocol-derived **Coordination Transcript** view,
 - deterministic and optional LLM-assisted mission modes,
 - final recommendation and verified brief,
 - synthetic evidence and published work products,
-- a **Technical View** with independent peer state and transport audit,
-- centralized-vs-P2P comparison,
-- 11-scenario adversarial LLM evaluation,
+- an **Engineering Audit** with independent peer state and transport history,
+- an **Architecture Tradeoff** comparison,
+- an 11-scenario **Stress & Governance** evaluation,
 - and a raw machine-readable mission snapshot.
 
 Deterministic mode requires no API token and remains fully functional if the model provider is unavailable.
@@ -424,7 +429,7 @@ python -m pytest -q
 
 ## Current Test Coverage
 
-The repository contains **112 automated tests** covering:
+The repository contains **115 automated tests** covering:
 
 - protocol schemas,
 - discovery and transport,
@@ -441,6 +446,7 @@ The repository contains **112 automated tests** covering:
 - adversarial model scenarios,
 - business-story presentation,
 - protocol-to-conversation provenance,
+- live playback and presentation behavior,
 - and Gradio service/UI wiring.
 
 ## Project Structure
@@ -491,6 +497,7 @@ The repository contains **112 automated tests** covering:
 - Use only synthetic, public-safe demo data.
 - Never commit secrets or private planning material.
 - Present the business story first while preserving technical evidence underneath.
+- Make agent activity observable while preserving traceability to the real protocol record.
 
 ## Development Workflow
 
@@ -531,15 +538,17 @@ Those capabilities belong to later agents in the portfolio.
 
 ## Production Validation
 
-Agent 10 passed the final live checks in both execution modes after the business-first UI redesign:
+Agent 10 passed the final live checks in both execution modes after the business-first UI redesign and presentation retrofit:
 
 - deterministic mission completed,
 - LLM-assisted mission completed,
 - recommendation remained `enter_with_conditions`,
 - verification remained `verified`,
-- Business Story rendered correctly,
-- Agent Conversation rendered from real protocol events,
-- Technical View preserved the raw audit evidence,
+- the centered business-story reading path rendered correctly,
+- Live Peer Activity visibly showed protocol-derived coordination during execution,
+- the completed coordination transcript remained reviewable and traceable to real protocol messages,
+- Engineering Audit preserved the raw peer and transport evidence,
+- the generic Gradio progress overlay was removed in favor of the agent system's own running state,
 - and the public repository hygiene review found no real credentials or private planning material.
 
 ## License
