@@ -125,3 +125,40 @@ def test_business_first_gradio_outputs_include_executive_story_and_real_event_tr
     assert "This is not a scripted chat" in conversation
     assert "mission_announcement" in conversation
     assert "role_claim" in conversation
+
+
+def test_business_layout_uses_narrow_vertical_reading_path() -> None:
+    app = importlib.import_module("app")
+
+    assert "max-width: 980px" in app.APP_CSS
+    assert ".agent-grid { display: grid; grid-template-columns: 1fr;" in app.APP_CSS
+    assert ".process-flow { display: grid; grid-template-columns: 1fr;" in app.APP_CSS
+    assert "font-size: 1.08rem" in app.APP_CSS
+
+
+def test_streaming_mission_yields_visible_protocol_progress_before_completion(monkeypatch) -> None:
+    app = importlib.import_module("app")
+    monkeypatch.setattr(app, "_playback_delay_for_event", lambda _event: 0)
+
+    frames = list(app._stream_mission("Deterministic"))
+
+    assert len(frames) > 3
+    assert all(len(frame) == 10 for frame in frames)
+    assert "RUNNING" in frames[0][0]
+    assert any("mission_announcement" in frame[0] for frame in frames[1:-1])
+    assert any("role_claim" in frame[0] for frame in frames[1:-1])
+    assert "COMPLETE" in frames[-1][0]
+    assert "Mission completed" in frames[-1][1]
+    assert "Executive summary" in frames[-1][3]
+
+
+def test_completed_activity_retains_full_scrollable_protocol_transcript() -> None:
+    app = importlib.import_module("app")
+    snapshot = run_demo(DemoMode.DETERMINISTIC)
+    completed = app._activity_html(snapshot, len(snapshot.conversation), complete=True)
+
+    assert "overflow-y: auto" in app.APP_CSS
+    assert "Scroll inside the transcript" in completed
+    assert snapshot.conversation[0].message_id in completed
+    assert snapshot.conversation[-1].message_id in completed
+    assert completed.count('class="activity-line"') == len(snapshot.conversation)
