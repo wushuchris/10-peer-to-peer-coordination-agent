@@ -72,7 +72,11 @@ LLM_EVAL_HEADERS = [
 PLAYBACK_DELAY_SECONDS = 0.24
 
 APP_CSS = """
-.gradio-container { max-width: 980px !important; }
+.gradio-container {
+    max-width: 980px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
 .hero-card {
     border: 1px solid rgba(148, 163, 184, .28);
     border-radius: 22px;
@@ -663,7 +667,7 @@ with gr.Blocks(
             message_table,
             raw_snapshot,
         ],
-        show_progress="minimal",
+        show_progress="hidden",
     )
     compare_button.click(
         fn=_architecture_outputs,
